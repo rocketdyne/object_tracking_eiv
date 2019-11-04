@@ -32,6 +32,16 @@ def find_marker(valid_blobs):
                 return actual_marker
     return None
 
+def draw_cross(frame, actual_marker):
+
+    cv2.line(frame, (int(actual_marker.x_barycenter - 20), int(actual_marker.y_barycenter)),
+             (int(actual_marker.x_barycenter + 20), int(actual_marker.y_barycenter)),
+             color=(0, 250, 0), thickness=2)
+    cv2.line(frame, (int(actual_marker.x_barycenter), int(actual_marker.y_barycenter - 20)),
+             (int(actual_marker.x_barycenter), int(actual_marker.y_barycenter + 20)),
+             color=(0, 250, 0), thickness=2)
+
+
 
 
 
@@ -62,6 +72,10 @@ def main (videopath):
 
     capture = cv2.VideoCapture(videopath)
 
+    #initialization. They will be Marker objects
+    actual_marker = None
+    previuos_marker = None
+
     while (capture.isOpened()):
 
         valid_blobs = []
@@ -72,7 +86,6 @@ def main (videopath):
 
         if retval == False:
             break
-
 
         bin_frame = binarize_frame(frame) #gaussian + hsv conversion + thresholding
 
@@ -95,14 +108,10 @@ def main (videopath):
 
 
             if actual_marker is not None:
-
                 #draw a cross in the center of the marker
-                cv2.line(frame, (int(actual_marker.x_barycenter-20), int(actual_marker.y_barycenter)),
-                         (int(actual_marker.x_barycenter + 20), int(actual_marker.y_barycenter)),
-                         color=(0, 250, 0), thickness=2)
-                cv2.line(frame, (int(actual_marker.x_barycenter), int(actual_marker.y_barycenter-20)),
-                         (int(actual_marker.x_barycenter), int(actual_marker.y_barycenter + 20)),
-                         color=(0, 250, 0), thickness=2)
+                draw_cross(frame, actual_marker)
+
+                #TODO speed calc.
 
             else:
                 pass
