@@ -3,6 +3,8 @@ import errno
 import itertools
 import math
 from types import SimpleNamespace
+import time
+import argparse
 
 import cv2
 from constants import *
@@ -61,7 +63,7 @@ def showinfo(frame, info_type, mean_speed_data=None, direction=None):
         if mean_speed_data.mean_px_speed != -1: #also mean_kmh_speed will be != -1
             speed_string = 'SPEED: {:5.2f} (pixel/s); {:5.2f} (km/h)'\
                                .format(mean_speed_data.mean_px_speed, mean_speed_data.mean_kmh_speed)
-            print (speed_string)
+            #print (speed_string)
         else:
             speed_string = 'SPEED (): ----- (pixel/s); ----- (km/h)'
 
@@ -96,7 +98,7 @@ def get_instant_px_speed(actual_marker, previous_marker):
 def get_instant_kmh_speed(inst_px_speed, actual_marker):
 
     if inst_px_speed is not None:
-        inst_ms_speed = inst_px_speed * (60 / (actual_marker.mean_width*100)) #meters per second speed. 60cm is the base width of the marker in reality. See main document
+        inst_ms_speed = inst_px_speed * (60 / (actual_marker.mean_width*100)) #speed in meters per second. 60cm is the width of the marker in reality. See main document
         inst_kmh_speed = (inst_ms_speed * 3600) / 1000
         return inst_kmh_speed
     else:
@@ -195,9 +197,7 @@ class Blob(object):
 
 
 
-def main (videopath):
-
-
+def main (videopath, save_elab):
 
     if not os.path.isfile(videopath):
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), videopath)
@@ -205,21 +205,24 @@ def main (videopath):
     capture = cv2.VideoCapture(videopath)
 
     #INITIALIZATION
-
-    # they will be Marker objects
-    actual_marker = None
+    actual_marker = None # they will be Marker objects
     previous_marker = None
-
-    # only avg speed will be displayed, every 15 consecutive frames, counted by frame_count_mean
+    # only avg speed will be displayed, every 15 consecutive frames, counted by frame_count
     mean_speed_data = SimpleNamespace(mean_px_speed=-1, mean_kmh_speed=-1, frame_count=-1,
                                       sum_px_speed=0, sum_kmh_speed=0)  # used to calculate mean values
+
+    if save_elab:
+        out = cv2.VideoWriter('output.mp4', 0x7634706d, 30.0, (WIDTH, HEIGHT))
 
     while (capture.isOpened()):
 
         valid_blobs = []
 
+        cv2.namedWindow('Object Tracking')
+
         #TODO: clock for 30 fps
 
+        tic = time.time()
         retval, frame = capture.read()
 
         if retval == False:
@@ -235,7 +238,6 @@ def main (videopath):
         #cv2.drawContours(frame, contours, -1, (0, 255, 0), 3)
         #cv2.imshow('Contours', frame)
 
-
         for contour in contours:
             box = cv2.minAreaRect(contour) #in C a cvbox2d struct is returned. Here a tuple with 3 elements, the first is the center (x, y), the secons is (W, H), the third is the angle https://stackoverflow.com/questions/11779100/python-opencv-box2d
             area=box[1][0]*box[1][1]
@@ -245,7 +247,6 @@ def main (videopath):
                                         x_center=box[0][0], y_center=box[0][1]))
 
         actual_marker = find_marker(valid_blobs)
-
 
         if actual_marker is not None:
 
@@ -258,28 +259,43 @@ def main (videopath):
             direction = get_direction(actual_marker, previous_marker)
             mean_speed_data = get_mean_speeds(inst_px_speed, inst_kmh_speed, mean_speed_data, previous_marker)
 
-            print(mean_speed_data.mean_kmh_speed)
+            #print(mean_speed_data.mean_kmh_speed)
 
             showinfo(frame, 'TARGET_AQ', mean_speed_data, direction)
         else:
-            print('Not found')
+            #print('Not found')
             showinfo(frame, 'NOTARGET')
 
-        cv2.waitKey(30)
-        cv2.imshow('Test', frame)
+        cv2.waitKey(33)
 
+        if save_elab:
+            out.write(frame)
+
+        cv2.imshow('Object Tracking', frame)
+
+        toc = time.time() - tic
+        if toc < 0.032: #TODO: change this ugly 30fps playback workaroud
+            wait = (0.032 - toc)* 1000
+        else:
+            wait = 1
+        c = cv2.waitKey(int(wait))
+        if c == 27 : break #esc stops the playback
 
         #update marker
         previous_marker=actual_marker
 
     capture.release()
+    if save_elab:
+        out.release()
     cv2.destroyAllWindows()
 
 if __name__ == '__main__':
 
-    main('./11small.mp4')
+    p = argparse.ArgumentParser()
+    p.add_argument('--input_video_path', '-i', required=True, help="path to video file"),
+    p.add_argument("--save_elab", "-s", action="store_true", help="save the processed video to disk (in the current path)")
+    flags = p.parse_args()
 
-    #TODO: launch/input management
-    #TODO: play at 30fps
+    main(flags.input_video_path, flags.save_elab)
 
 
