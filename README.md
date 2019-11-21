@@ -21,7 +21,8 @@ It is assumed that the marker is shooted laterally, with the camera in a fixed p
 
 	python main.py -i path/to/video.mp4
 
-The processed video can be saved adding the `-s` flag; it will be saved in the current working directory as `output.mp4` 
+The attached `demo_11small.mp4` can be used as demo.
+The processed video can be saved adding the `-s` flag; it will be saved in the current working directory as `output.mp4`.
 
 ##  Demo
 [![Demo object_tracking](figs/output_cut.gif)](https://drive.google.com/open?id=1IkV1jBuu2ewH4MM4-9toEi2S1aT9H3Yr)
